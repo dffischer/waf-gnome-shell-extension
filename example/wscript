@@ -1,0 +1,9 @@
+#! /usr/bin/env python
+
+def configure(cnf):
+    from re import search
+    cnf.env["SHELL_VERSION"] = search('[\d.]+$',
+            cnf.cmd_and_log(('gnome-shell', '--version'))).group(0)
+
+def build(bld):
+    bld(features="subst", source="metadata.json.in", target="metadata.json")

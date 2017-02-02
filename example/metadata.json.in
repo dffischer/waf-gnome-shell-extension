@@ -1,0 +1,6 @@
+{
+ "uuid": "example@waf-gse",
+ "name": "Hello, World!",
+ "description": "An example extension to demonstrate the use of the gnome-shell extension waftool. It displays a customizable message when clicking on the top panel.",
+ "shell-version": [ "@SHELL_VERSION@" ]
+}
