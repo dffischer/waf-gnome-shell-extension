@@ -3,8 +3,9 @@
 """
 Install gnome-shell extensions.
 
-The functions herein center around a feature called 'gse' which installs all
-specified source files into a uuid-named directory for the shell to find it.
+The functions herein center around a feature called 'gse' which installs a
+'metadata.json', 'extension.js' and all additionaly specified source files to a
+uuid-named directory for the shell to find it.
 
     def configure(cnf):
         cnf.load("gse")
@@ -23,7 +24,8 @@ def configure(cnf):
 @feature("gse")
 @before_method('process_source')
 def process_gse(gen):
-    sources = gen.to_nodes(getattr(gen, 'source', []))
+    sources = gen.to_nodes(["metadata.json", "extension.js"]) \
+            + gen.to_nodes(getattr(gen, 'source', []))
     gen.source = []  # Suppress further processing.
 
     uuid = getattr(gen, "uuid", None)
