@@ -55,10 +55,12 @@ def partition(items, predicate=int, categories=2):
 @feature("gse")
 @before_method('process_source')
 def process_gse(gen):
+    # Compose sources.
     sources = gen.to_nodes(["metadata.json", "extension.js"]) \
             + gen.to_nodes(getattr(gen, 'source', []))
     gen.source = []  # Suppress further processing.
 
+    # Categorize sources.
     # Installation has to look at their hierarchy from the correct root to
     # install generated files into the same location as ready available ones.
     nothing, src, bld, both = partition(sources, categories=4, predicate=
@@ -66,10 +68,12 @@ def process_gse(gen):
             # to end up with an integral predicate.
             lambda source: source.is_src() + 2 * source.is_bld())
 
+    # Retrieve uuid.
     uuid = getattr(gen, "uuid", None)
     if not uuid:
         raise WafError("missing uuid in {}".format(self))
 
+    # Install.
     install = partial(gen.add_install_files, install_to=join(gen.env.HOME,
         ".local", "share", "gnome-shell", "extensions", uuid))
     install(install_from=src)
