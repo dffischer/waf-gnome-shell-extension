@@ -68,6 +68,18 @@ def process_gse(gen):
             # to end up with an integral predicate.
             lambda source: source.is_src() + 2 * source.is_bld())
 
+    # Check for sources manually added outside the extension tree.
+    path = gen.path
+    bldpath = path.get_bld()
+    nothing = tuple(nothing)
+    if tuple(nothing):
+        raise WafError("files {} neither found below {} nor {}".format(
+            ', '.join(map(str, nothing)), path, bldpath))
+    both = tuple(both)
+    if tuple(both):
+        raise WafError("files {} found both below {} and {}".format(
+            ', '.join(map(str, nothing)), path, bldpath))
+
     # Retrieve uuid.
     uuid = getattr(gen, "uuid", None)
     if not uuid:
