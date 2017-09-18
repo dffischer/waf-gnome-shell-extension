@@ -55,18 +55,16 @@ def partition(items, predicate=int, categories=2):
 @feature("gse")
 @before_method('process_source')
 def process_gse(gen):
-    # Compose sources.
-    sources = gen.to_nodes(["metadata.json", "extension.js"]) \
-            + gen.to_nodes(getattr(gen, 'source', []))
-    gen.source = []  # Suppress further processing.
-
-    # Categorize sources.
+    # Retrieve and categorize sources.
     # Installation has to look at their hierarchy from the correct root to
     # install generated files into the same location as ready available ones.
-    nothing, src, bld, both = partition(sources, categories=4, predicate=
+    nothing, src, bld, both = partition(categories=4,
+            items=gen.to_nodes(["metadata.json", "extension.js"])
+                + gen.to_nodes(getattr(gen, 'source', [])),
             # The is_src and is_bld predicates are combined like binary flags
             # to end up with an integral predicate.
-            lambda source: source.is_src() + 2 * source.is_bld())
+            predicate=lambda source: source.is_src() + 2 * source.is_bld())
+    gen.source = []  # Suppress further processing.
 
     # Check for sources manually added outside the extension tree.
     path = gen.path
