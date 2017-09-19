@@ -5,23 +5,27 @@ Install gnome-shell extensions.
 
 The functions herein center around a feature called 'gse' which installs a
 'metadata.json', 'extension.js' and all additionaly specified source files to a
-uuid-named directory for the shell to find it.
+uuid-named directory for the shell to find it. Specified schemas are also
+installed and compiled.
 
     def configure(cnf):
         cnf.load("gse")
 
     def build(bld):
-        bld(features="gse", uuid="some@extension", source="prefs.js")
+        bld(features="gse", uuid="some@extension", source="prefs.js",
+                schemas="one.gschema.xml two.gschema.xml")
 """
 
 from waflib.TaskGen import feature, before_method
 from waflib.Errors import WafError
+from waflib.Utils import to_list
 from os.path import join
 from collections import deque
 from functools import partial
 
 def configure(cnf):
     cnf.env.HOME = cnf.environ['HOME']
+    cnf.load('glib2')
 
 def partition(items, predicate=int, categories=2):
     """
@@ -88,3 +92,11 @@ def process_gse(gen):
         ".local", "share", "gnome-shell", "extensions", uuid))
     install(install_from=src)
     install(install_from=bld, cwd=bldpath)
+
+    # Pass on to glib2 tool for schema processing.
+    schemas = getattr(gen, 'schemas', None)
+    if schemas:
+        gen.meths.append('process_settings')
+        gen.settings_schema_files = to_list(schemas)
+        gen.env.GSETTINGSSCHEMADIR = join(gen.env.HOME, ".local", "share",
+                "gnome-shell", "extensions", uuid, "schemas")
