@@ -88,8 +88,9 @@ def process_gse(gen):
         raise WafError("missing uuid in {}".format(self))
 
     # Install.
-    install = partial(gen.add_install_files, install_to=join(gen.env.HOME,
-        ".local", "share", "gnome-shell", "extensions", uuid))
+    target = join(gen.env.HOME,
+            ".local", "share", "gnome-shell", "extensions", uuid)
+    install = partial(gen.add_install_files, install_to=target)
     install(install_from=src)
     install(install_from=bld, cwd=bldpath)
 
@@ -98,5 +99,4 @@ def process_gse(gen):
     if schemas:
         gen.meths.append('process_settings')
         gen.settings_schema_files = to_list(schemas)
-        gen.env.GSETTINGSSCHEMADIR = join(gen.env.HOME, ".local", "share",
-                "gnome-shell", "extensions", uuid, "schemas")
+        gen.env.GSETTINGSSCHEMADIR = join(target, "schemas")
