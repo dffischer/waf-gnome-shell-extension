@@ -8,4 +8,5 @@ def configure(cnf):
 
 def build(bld):
     bld(features="subst", source="metadata.json.in", target="metadata.json")
-    bld(features="gse", uuid="example@waf-gse")
+    bld(features="gse", uuid="example@waf-gse", source="convenience.js",
+            schemas="org.gnome.shell.extensions.example.gschema.xml")
