@@ -5,15 +5,15 @@ Install gnome-shell extensions.
 
 The functions herein center around a feature called 'gse' which installs a
 'metadata.json', 'extension.js' and all additionaly specified source files to a
-uuid-named directory for the shell to find it. Specified schemas are also
-installed and compiled.
+uuid-named directory for the shell to find it. Schemas specified to the task
+generator or in the meta data description are also installed and compiled.
 
     def configure(cnf):
         cnf.load("gse")
 
     def build(bld):
         bld(features="gse", uuid="some@extension", source="prefs.js",
-                schemas="one.gschema.xml two.gschema.xml")
+                schemas="a.gschema.xml b.gschema.xml")  # not noted in metadata
 """
 
 from waflib.TaskGen import feature, before_method
@@ -60,10 +60,12 @@ def partition(items, predicate=int, categories=2):
 @before_method('process_source')
 def process_gse(gen):
     # Retrieve and categorize sources.
+    path = gen.path
+    metadata = path.find_resource("metadata.json")
     # Installation has to look at their hierarchy from the correct root to
     # install generated files into the same location as ready available ones.
     nothing, src, bld, both = partition(categories=4,
-            items=gen.to_nodes(["metadata.json", "extension.js"])
+            items=[metadata, path.find_resource("extension.js")]
                 + gen.to_nodes(getattr(gen, 'source', [])),
             # The is_src and is_bld predicates are combined like binary flags
             # to end up with an integral predicate.
@@ -71,7 +73,6 @@ def process_gse(gen):
     gen.source = []  # Suppress further processing.
 
     # Check for sources manually added outside the extension tree.
-    path = gen.path
     bldpath = path.get_bld()
     nothing = tuple(nothing)
     if tuple(nothing):
@@ -95,9 +96,14 @@ def process_gse(gen):
     install(install_from=src)
     install(install_from=bld, cwd=bldpath)
 
+    # Collect schemas.
+    schemas = to_list(getattr(gen, 'schemas', []))
+    metadata = metadata.read_json()
+    if "settings-schema" in metadata:
+        schemas += [metadata["settings-schema"] + '.gschema.xml']
+
     # Pass on to glib2 tool for schema processing.
-    schemas = getattr(gen, 'schemas', None)
     if schemas:
         gen.meths.append('process_settings')
-        gen.settings_schema_files = to_list(schemas)
+        gen.settings_schema_files = schemas
         env.GSETTINGSSCHEMADIR = join(target, "schemas")
