@@ -92,7 +92,8 @@ def process_gse(gen):
     env = gen.env
     target = join(env.HOME,
             ".local", "share", "gnome-shell", "extensions", uuid)
-    install = partial(gen.add_install_files, install_to=target)
+    install = partial(gen.add_install_files,
+            install_to=target, relative_trick=True)
     install(install_from=src)
     install(install_from=bld, cwd=bldpath)
 
