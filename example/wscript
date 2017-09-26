@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 def configure(cnf):
+    cnf.load("glib2")
     cnf.load("gse", tooldir="..")
     from re import search
     cnf.env["SHELL_VERSION"] = search('[\d.]+$',

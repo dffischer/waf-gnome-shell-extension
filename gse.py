@@ -5,10 +5,13 @@ Install gnome-shell extensions.
 
 The functions herein center around a feature called 'gse' which installs a
 'metadata.json', 'extension.js' and all additionaly specified source files to a
-uuid-named directory for the shell to find it. Schemas specified to the task
-generator or in the meta data description are also installed and compiled.
+uuid-named directory for the shell to find it.
+
+Schemas specified to the task generator or in the meta data description are
+also installed and compiled when the glib2 tool is loaded.
 
     def configure(cnf):
+        cnf.load("glib2")
         cnf.load("gse")
 
     def build(bld):
@@ -25,7 +28,6 @@ from functools import partial
 
 def configure(cnf):
     cnf.env.HOME = cnf.environ['HOME']
-    cnf.load('glib2')
 
 def partition(items, predicate=int, categories=2):
     """
