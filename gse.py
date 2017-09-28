@@ -4,8 +4,8 @@
 Install gnome-shell extensions.
 
 The functions herein center around a feature called 'gse' which installs a
-'metadata.json', 'extension.js' and all additionaly specified source files to a
-uuid-named directory for the shell to find it.
+'metadata.json', 'extension.js', an optional 'prefs.js' and all additionaly
+specified source files to a uuid-named directory for the shell to find it.
 
 Schemas specified to the task generator or in the meta data description are
 also installed and compiled when the glib2 tool is loaded.
@@ -15,8 +15,9 @@ also installed and compiled when the glib2 tool is loaded.
         cnf.load("gse")
 
     def build(bld):
-        bld(features="gse", uuid="some@extension", source="prefs.js",
-                schemas="a.gschema.xml b.gschema.xml")  # not noted in metadata
+        bld(features="gse", uuid="some@extension",
+                schemas="a.gschema.xml b.gschema.xml",  # not noted in metadata
+                source="additional sources and data files")
 """
 
 from waflib.TaskGen import feature, before_method
@@ -68,6 +69,7 @@ def process_gse(gen):
     # install generated files into the same location as ready available ones.
     nothing, src, bld, both = partition(categories=4,
             items=[metadata, path.find_resource("extension.js")]
+                + list(filter(lambda x: x, [path.find_resource("prefs.js")]))
                 + gen.to_nodes(getattr(gen, 'source', [])),
             # The is_src and is_bld predicates are combined like binary flags
             # to end up with an integral predicate.
