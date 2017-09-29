@@ -26,6 +26,7 @@ from waflib.Utils import to_list
 from os.path import join
 from collections import deque
 from functools import partial
+from itertools import chain
 
 def configure(cnf):
     cnf.env.HOME = cnf.environ['HOME']
@@ -68,9 +69,9 @@ def process_gse(gen):
     # Installation has to look at their hierarchy from the correct root to
     # install generated files into the same location as ready available ones.
     nothing, src, bld, both = partition(categories=4,
-            items=[metadata, path.find_resource("extension.js")]
-                + list(filter(lambda x: x, [path.find_resource("prefs.js")]))
-                + gen.to_nodes(getattr(gen, 'source', [])),
+            items=chain((metadata, path.find_resource("extension.js")),
+                filter(lambda x: x, [path.find_resource("prefs.js")]),
+                gen.to_nodes(getattr(gen, 'source', []))),
             # The is_src and is_bld predicates are combined like binary flags
             # to end up with an integral predicate.
             predicate=lambda source: source.is_src() + 2 * source.is_bld())
