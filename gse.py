@@ -17,7 +17,12 @@ also installed and compiled when the glib2 tool is loaded.
     def build(bld):
         bld(features="gse", uuid="some@extension",
                 schemas="a.gschema.xml b.gschema.xml",  # not noted in metadata
-                source="additional sources and data files")
+                source="additional data files")  # not found by import scanning
+
+Imports of the form 'const <something> = Me.imports.<import>;' are
+automatically detected in the entrypoint javascript files. Additional source
+and data files to install can manually be specified through the source
+parameter. These are not scanned for includes.
 """
 
 from waflib.TaskGen import feature, before_method
@@ -27,6 +32,7 @@ from os.path import join
 from collections import deque
 from functools import partial
 from itertools import chain
+from re import compile
 
 def configure(cnf):
     cnf.env.HOME = cnf.environ['HOME']
@@ -60,18 +66,47 @@ def partition(items, predicate=int, categories=2):
                     break
     return map(iterate_category, range(categories))
 
+class Work(set):
+    """
+    A workqueue set to which elements can only be added once, even after they
+    were removed. Useful to explore a graph without iterating nodes twice.
+    """
+    def __init__(self, *elements):
+        super().__init__(elements)
+        self.seen = set(elements)
+
+    def __contains__(self, element):
+        return self.seen.__contains__(element)
+
+    def add(self, element):
+        if element not in self.seen:
+            self.seen.add(element)
+            super().add(element)
+
 @feature("gse")
 @before_method('process_source')
 def process_gse(gen):
-    # Retrieve and categorize sources.
+    # Retrieve sources.
     path = gen.path
     metadata = path.find_resource("metadata.json")
+    def scan_includes(nodes, inclusion=compile(
+        "const [^ =]+ ?= ?Me.imports.(?P<import>[^();]+);")):
+        work = Work(*nodes)
+        while work:
+            current = work.pop()
+            yield current
+            for match in inclusion.finditer(current.read()):
+                work.add(path.find_resource(
+                    match.group("import").replace('.', '/') + '.js'))
+
+    # Categorize sources.
     # Installation has to look at their hierarchy from the correct root to
     # install generated files into the same location as ready available ones.
     nothing, src, bld, both = partition(categories=4,
-            items=chain((metadata, path.find_resource("extension.js")),
-                filter(lambda x: x, [path.find_resource("prefs.js")]),
-                gen.to_nodes(getattr(gen, 'source', []))),
+            items=chain((metadata, ), gen.to_nodes(getattr(gen, 'source', [])),
+                scan_includes(chain((path.find_resource("extension.js"), ),
+                    filter(lambda x: x, [path.find_resource("prefs.js")])),
+                    path, gen.inclusion)),
             # The is_src and is_bld predicates are combined like binary flags
             # to end up with an integral predicate.
             predicate=lambda source: source.is_src() + 2 * source.is_bld())
