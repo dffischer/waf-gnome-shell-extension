@@ -22,10 +22,11 @@ also installed and compiled when the glib2 tool is loaded.
 Imports of the form 'const <something> = Me.imports.<import>;' are
 automatically detected in the entrypoint javascript files. Additional source
 and data files to install can manually be specified through the source
-parameter. These are not scanned for includes.
+parameter. To have these scanned for includes, wrap them with the
+scan_includes function available as a task generator method.
 """
 
-from waflib.TaskGen import feature, before_method
+from waflib.TaskGen import feature, before_method, taskgen_method, task_gen
 from waflib.Errors import WafError
 from waflib.Utils import to_list
 from os.path import join
@@ -83,30 +84,36 @@ class Work(set):
             self.seen.add(element)
             super().add(element)
 
+task_gen.inclusion = compile(
+        "const [^ =]+ ?= ?Me.imports.(?P<import>[^();]+);")
+
+@taskgen_method
+def scan_includes(gen, nodes):
+    """
+    Recursively scan javascript code for the generator's include pattern.
+    """
+    path = gen.path
+    inclusion = gen.inclusion
+    work = Work(*nodes)
+    while work:
+        current = work.pop()
+        yield current
+        for match in inclusion.finditer(current.read()):
+            work.add(path.find_resource(
+                match.group("import").replace('.', '/') + '.js'))
+
 @feature("gse")
 @before_method('process_source')
 def process_gse(gen):
-    # Retrieve sources.
+    # Retrieve and categorize sources.
     path = gen.path
     metadata = path.find_resource("metadata.json")
-    def scan_includes(nodes, inclusion=compile(
-        "const [^ =]+ ?= ?Me.imports.(?P<import>[^();]+);")):
-        work = Work(*nodes)
-        while work:
-            current = work.pop()
-            yield current
-            for match in inclusion.finditer(current.read()):
-                work.add(path.find_resource(
-                    match.group("import").replace('.', '/') + '.js'))
-
-    # Categorize sources.
     # Installation has to look at their hierarchy from the correct root to
     # install generated files into the same location as ready available ones.
     nothing, src, bld, both = partition(categories=4,
             items=chain((metadata, ), gen.to_nodes(getattr(gen, 'source', [])),
-                scan_includes(chain((path.find_resource("extension.js"), ),
-                    filter(lambda x: x, [path.find_resource("prefs.js")])),
-                    path, gen.inclusion)),
+                gen.scan_includes(chain((path.find_resource("extension.js"), ),
+                    filter(lambda x: x, [path.find_resource("prefs.js")])))),
             # The is_src and is_bld predicates are combined like binary flags
             # to end up with an integral predicate.
             predicate=lambda source: source.is_src() + 2 * source.is_bld())
