@@ -20,15 +20,17 @@ also installed and compiled when the glib2 tool is loaded.
                 source="additional data files")  # not found by import scanning
 
 Imports of the form 'const <something> = Me.imports.<import>;' are
-automatically detected in the entrypoint javascript files. Additional source
-and data files to install can manually be specified through the source
-parameter. To have these scanned for includes, wrap them with the
+automatically detected in the entrypoint javascript files. An alternative
+pattern to find these can be injected using the set_inclusion functions.
+Additional source and data files to install can manually be specified through
+the source parameter. To have these scanned for includes, wrap them with the
 scan_includes function available as a task generator method.
 """
 
 from waflib.TaskGen import feature, before_method, taskgen_method, task_gen
 from waflib.Errors import WafError
 from waflib.Utils import to_list
+from waflib.Configure import conf
 from os.path import join
 from collections import deque
 from functools import partial
@@ -84,8 +86,14 @@ class Work(set):
             self.seen.add(element)
             super().add(element)
 
-task_gen.inclusion = compile(
-        "const [^ =]+ ?= ?Me.imports.(?P<import>[^();]+);")
+@conf
+def set_inclusion(regex):
+    """
+    Define a default inclusion pattern for all generators that set_inclusion
+    was not called on.
+    """
+    task_gen.inclusion = compile(regex)
+set_inclusion("const [^ =]+ ?= ?Me.imports.(?P<import>[^();]+);")
 
 @taskgen_method
 def scan_includes(gen, nodes):
