@@ -21,10 +21,11 @@ also installed and compiled when the glib2 tool is loaded.
 
 Imports of the form 'const <something> = Me.imports.<import>;' are
 automatically detected in the entrypoint javascript files. An alternative
-pattern to find these can be injected using the set_inclusion functions.
-Additional source and data files to install can manually be specified through
-the source parameter. To have these scanned for includes, wrap them with the
-scan_includes function available as a task generator method.
+pattern to find these can be injected using the set_inclusion functions, either
+globally on the context or on a dedicated task generator. Additional source and
+data files to install can manually be specified through the source parameter.
+To have these scanned for includes, wrap them with the scan_includes function
+available as a task generator method.
 """
 
 from waflib.TaskGen import feature, before_method, taskgen_method, task_gen
@@ -85,6 +86,16 @@ class Work(set):
         if element not in self.seen:
             self.seen.add(element)
             super().add(element)
+
+@taskgen_method
+def set_inclusion(gen, regex):
+    """
+    Define an alternative pattern for this generator to find include
+    directives.  The given regular expression should have a group named
+    'import' which yields the inclusion with dots for slashes and without the
+    '.js' extension.
+    """
+    gen.inclusion = compile(regex)
 
 @conf
 def set_inclusion(regex):
