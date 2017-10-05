@@ -1,7 +1,9 @@
 const St = imports.gi.St;
 const Mainloop = imports.mainloop;
 const Main = imports.ui.main;
-const settings = imports.misc.extensionUtils.getCurrentExtension().imports.lib.convenience.getSettings();
+const Me = imports.misc.extensionUtils.getCurrentExtension();
+const Convenience = Me.imports.lib.convenience;
+const settings = Convenience.getSettings();
 
 function _showHello() {
   let label = new St.Label({ text: settings.get_string('hello-text') || "Hello, world!" });

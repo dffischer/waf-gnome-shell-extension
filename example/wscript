@@ -9,4 +9,4 @@ def configure(cnf):
 
 def build(bld):
     bld(features="subst", source="metadata.json.in", target="metadata.json")
-    bld(features="gse", uuid="example@waf-gse", source="lib/convenience.js")
+    bld(features="gse", uuid="example@waf-gse")
