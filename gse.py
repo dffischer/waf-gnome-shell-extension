@@ -22,10 +22,15 @@ also installed and compiled when the glib2 tool is loaded.
 Imports of the form 'const <something> = Me.imports.<import>;' are
 automatically detected in the entrypoint javascript files. An alternative
 pattern to find these can be injected using the set_inclusion functions, either
-globally on the context or on a dedicated task generator. Additional source and
-data files to install can manually be specified through the source parameter.
-To have these scanned for includes, wrap them with the scan_includes function
-available as a task generator method.
+globally on the context or on a dedicated task generator.
+
+    gen = bld(features="gse", uuid="some@extension")
+    gen.set_inclusion("Me.imports.(?P<import>[^ .]+)")
+    gen.source = list(gen.scan_includes("library.js"))
+
+Additional source and data files to install can manually be specified through
+the source parameter. To have these scanned for includes, wrap them with the
+scan_includes function available as a task generator method.
 """
 
 from waflib.TaskGen import feature, before_method, taskgen_method, task_gen
