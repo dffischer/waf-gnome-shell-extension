@@ -32,6 +32,10 @@ globally on the context or on a dedicated task generator.
 Additional source and data files to install can manually be specified through
 the source parameter. To have these scanned for includes, wrap them with the
 scan_includes function available as a task generator method.
+
+The configuration flag '--global' optionally switches to system-wide
+installation for all users. To process it, the tool has to be loaded in the
+configure and option functions.
 """
 
 from waflib.TaskGen import feature, before_method, taskgen_method, task_gen
@@ -44,8 +48,20 @@ from functools import partial
 from itertools import chain
 from re import compile
 
+def options(opt):
+    opt.add_option('--global', action='store_true', dest='glob', default=False,
+            help="Install globally instead of for the current user only.")
+
 def configure(cnf):
-    cnf.env.HOME = cnf.environ['HOME']
+    env = cnf.env
+    if cnf.options.glob:
+        cnf.load('gnu_dirs')
+        env.EXTDIR = join(env.DATAROOTDIR, "gnome-shell", "extensions", "{}")
+        env.SCHEMADIR = join(env.DATAROOTDIR, "glib-2.0", "schemas")
+    else:
+        env.EXTDIR = join(cnf.environ['HOME'],
+            ".local", "share", "gnome-shell", "extensions", "{}")
+        env.SCHEMADIR = join(env.EXTDIR, "schemas")
 
 def partition(items, predicate=int, categories=2):
     """
@@ -163,8 +179,7 @@ def process_gse(gen):
 
     # Install.
     env = gen.env
-    target = join(env.HOME,
-            ".local", "share", "gnome-shell", "extensions", uuid)
+    target = env.EXTDIR.format(uuid)
     install = partial(gen.add_install_files,
             install_to=target, relative_trick=True)
     install(install_from=src)
@@ -179,4 +194,4 @@ def process_gse(gen):
     if schemas:
         gen.meths.append('process_settings')
         gen.settings_schema_files = schemas
-        env.GSETTINGSSCHEMADIR = join(target, "schemas")
+        env.GSETTINGSSCHEMADIR = env.SCHEMADIR.format(uuid)

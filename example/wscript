@@ -1,5 +1,8 @@
 #! /usr/bin/env python
 
+def options(opt):
+    opt.load("gse", tooldir="..")
+
 def configure(cnf):
     cnf.load("glib2")
     cnf.load("gse", tooldir="..")
