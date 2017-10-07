@@ -15,7 +15,8 @@ also installed and compiled when the glib2 tool is loaded.
         cnf.load("gse")
 
     def build(bld):
-        bld(features="gse", uuid="some@extension",
+        bld(features="gse",
+                uuid="some@extension",  # if not parsable from metadata.json
                 schemas="a.gschema.xml b.gschema.xml",  # not noted in metadata
                 source="additional data files")  # not found by import scanning
 
@@ -155,7 +156,8 @@ def process_gse(gen):
             ', '.join(map(str, nothing)), path, bldpath))
 
     # Retrieve uuid.
-    uuid = getattr(gen, "uuid", None)
+    metadata = metadata.read_json()
+    uuid = getattr(gen, "uuid", None) or metadata["uuid"]
     if not uuid:
         raise WafError("missing uuid in {}".format(self))
 
@@ -170,7 +172,6 @@ def process_gse(gen):
 
     # Collect schemas.
     schemas = to_list(getattr(gen, 'schemas', []))
-    metadata = metadata.read_json()
     if "settings-schema" in metadata:
         schemas += [metadata["settings-schema"] + '.gschema.xml']
 
