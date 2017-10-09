@@ -42,6 +42,7 @@ from waflib.TaskGen import feature, before_method, taskgen_method, task_gen
 from waflib.Errors import WafError
 from waflib.Utils import to_list
 from waflib.Configure import conf
+from waflib.Task import Task
 from os.path import join
 from collections import deque
 from functools import partial
@@ -146,6 +147,27 @@ def scan_includes(gen, nodes):
 @feature("gse")
 @before_method('process_source')
 def process_gse(gen):
+    gen.create_task('gse_producer', **{
+        # Propagete a set of parameters.
+        parameter: getattr(gen, parameter)
+            for parameter in gen.__dict__.keys()
+            & set(('source', 'uuid', 'schemas'))})
+    gen.source = []  # Suppress further processing.
+
+class gse_producer(Task):
+    always_run = True
+
+    def run(self):
+        gen = self.generator.bld(features="gse-internal", **{
+            parameter: getattr(self, parameter)
+                for parameter in self.__dict__.keys()
+                & set(('source', 'uuid', 'schemas'))})
+        gen.post()
+        self.more_tasks = gen.tasks
+
+@feature("gse-internal")
+@before_method('process_source')
+def process_gse_internal(gen):
     # Retrieve and categorize sources.
     path = gen.path
     metadata = path.find_resource("metadata.json")
