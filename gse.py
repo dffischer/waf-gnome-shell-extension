@@ -147,11 +147,12 @@ def scan_includes(gen, nodes):
 @feature("gse")
 @before_method('process_source')
 def process_gse(gen):
-    gen.create_task('gse_producer', **{
+    gen.create_task('gse_producer', inputs=[
+        gen.path.find_or_declare("metadata.json")
+    ], **{parameter: getattr(gen, parameter)
         # Propagete a set of parameters.
-        parameter: getattr(gen, parameter)
-            for parameter in gen.__dict__.keys()
-            & set(('source', 'uuid', 'schemas'))})
+        for parameter in gen.__dict__.keys()
+        & set(('source', 'uuid', 'schemas'))})
     gen.source = []  # Suppress further processing.
 
 class gse_producer(Task):
