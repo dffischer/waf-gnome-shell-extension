@@ -159,10 +159,11 @@ class gse_producer(Task):
     always_run = True
 
     def run(self):
-        gen = self.generator.bld(features="gse-internal", **{
-            parameter: getattr(self, parameter)
-                for parameter in self.__dict__.keys()
-                & set(('source', 'uuid', 'schemas'))})
+        gen = self.generator.bld(features="gse-internal",
+                metadata=self.inputs[0],
+                **{parameter: getattr(self, parameter)
+                    for parameter in self.__dict__.keys()
+                    & set(('source', 'uuid', 'schemas'))})
         gen.post()
         self.more_tasks = gen.tasks
 
@@ -171,7 +172,7 @@ class gse_producer(Task):
 def process_gse_internal(gen):
     # Retrieve and categorize sources.
     path = gen.path
-    metadata = path.find_resource("metadata.json")
+    metadata = gen.metadata
     # Installation has to look at their hierarchy from the correct root to
     # install generated files into the same location as ready available ones.
     nothing, src, bld, both = partition(categories=4,
