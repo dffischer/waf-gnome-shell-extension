@@ -147,8 +147,11 @@ def scan_includes(gen, nodes):
 @feature("gse")
 @before_method('process_source')
 def process_gse(gen):
+    path = gen.path
     gen.create_task('gse_producer', inputs=[
-        gen.path.find_or_declare("metadata.json")
+        path.find_or_declare("metadata.json"),
+        path.find_or_declare("extension.js"),
+        path.find_or_declare("prefs.js")
     ], **{parameter: getattr(gen, parameter)
         # Propagete a set of parameters.
         for parameter in gen.__dict__.keys()
@@ -158,9 +161,18 @@ def process_gse(gen):
 class gse_producer(Task):
     always_run = True
 
+    def sig_explicit_deps(self):
+        try:
+            return super().sig_explicit_deps()
+        except FileNotFoundError:
+            # Remove prefs.js as it is optional
+            self.inputs = self.inputs[0:2]
+            return super().sig_explicit_deps()
+
     def run(self):
         gen = self.generator.bld(features="gse-internal",
                 metadata=self.inputs[0],
+                scan_sources=self.inputs[1:],
                 **{parameter: getattr(self, parameter)
                     for parameter in self.__dict__.keys()
                     & set(('source', 'uuid', 'schemas'))})
@@ -176,9 +188,7 @@ def process_gse_internal(gen):
     # Installation has to look at their hierarchy from the correct root to
     # install generated files into the same location as ready available ones.
     nothing, src, bld, both = partition(categories=4,
-            items=chain((metadata, ), gen.to_nodes(getattr(gen, 'source', [])),
-                gen.scan_includes(chain((path.find_resource("extension.js"), ),
-                    filter(lambda x: x, [path.find_resource("prefs.js")])))),
+            items=chain((metadata, ), gen.scan_includes(gen.scan_sources)),
             # The is_src and is_bld predicates are combined like binary flags
             # to end up with an integral predicate.
             predicate=lambda source: source.is_src() + 2 * source.is_bld())
