@@ -48,6 +48,7 @@ from collections import deque
 from functools import partial
 from itertools import chain
 from re import compile
+from contextlib import suppress
 
 def options(opt):
     opt.add_option('--global', action='store_true', dest='glob', default=False,
@@ -141,7 +142,7 @@ def scan_includes(gen, nodes):
         current = work.pop()
         yield current
         for match in inclusion.finditer(current.read()):
-            work.add(path.find_resource(
+            work.add(path.find_or_declare(
                 match.group("import").replace('.', '/') + '.js'))
 
 @feature("gse")
@@ -161,6 +162,32 @@ def process_gse(gen):
 class gse_producer(Task):
     always_run = True
 
+    def scan(self):
+        """
+        Find implicit dependencies using the generator's scan_includes.
+
+        The process is reentrant on non-existing files: When a node to be
+        scanned for includes is missing, the current iteration is saved and all
+        dependencies found up until now are returned, including the missing
+        one. This shortly after causes are_implicit_nodes_ready to find a task
+        generator producing this file. When the task was run, this scanner
+        method is invoked again and scanning continues where it left off.  As
+        it is now a prerequisite, execution will never return when the file
+        cannot be produced.
+        """
+        deps, scanner = getattr(self, 'scan_in_progress', None) or \
+                ([], self.generator.scan_includes(self.inputs[1:]))
+        for node in scanner:
+            deps.append(node)
+            if not node.exists():
+                self.scan_in_progress = deps, scanner
+                break
+        else:
+            # no scan in progress any longer
+            with suppress(AttributeError):
+                del(self.scan_in_progress)
+        return (deps, ())
+
     def sig_explicit_deps(self):
         try:
             return super().sig_explicit_deps()
@@ -172,10 +199,11 @@ class gse_producer(Task):
     def run(self):
         gen = self.generator.bld(features="gse-internal",
                 metadata=self.inputs[0],
-                scan_sources=self.inputs[1:],
+                source=self.generator.bld.node_deps[self.uid()] +
+                    self.generator.to_nodes(getattr(self, 'source', [])),
                 **{parameter: getattr(self, parameter)
                     for parameter in self.__dict__.keys()
-                    & set(('source', 'uuid', 'schemas'))})
+                    & set(('uuid', 'schemas'))})
         gen.post()
         self.more_tasks = gen.tasks
 
@@ -188,7 +216,7 @@ def process_gse_internal(gen):
     # Installation has to look at their hierarchy from the correct root to
     # install generated files into the same location as ready available ones.
     nothing, src, bld, both = partition(categories=4,
-            items=chain((metadata, ), gen.scan_includes(gen.scan_sources)),
+            items=chain((metadata, ), gen.source),
             # The is_src and is_bld predicates are combined like binary flags
             # to end up with an integral predicate.
             predicate=lambda source: source.is_src() + 2 * source.is_bld())
