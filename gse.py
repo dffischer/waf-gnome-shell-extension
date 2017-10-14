@@ -197,10 +197,11 @@ class gse_producer(Task):
             return super().sig_explicit_deps()
 
     def run(self):
-        gen = self.generator.bld(features="gse-internal",
-                metadata=self.inputs[0],
-                source=self.generator.bld.node_deps[self.uid()] +
-                    self.generator.to_nodes(getattr(self, 'source', [])),
+        gen = self.generator
+        bld = gen.bld
+        gen = bld(features="gse-internal", metadata=self.inputs[0],
+                source=gen.to_nodes(getattr(self, 'source', []))
+                    + bld.node_deps[self.uid()],
                 **{parameter: getattr(self, parameter)
                     for parameter in self.__dict__.keys()
                     & set(('uuid', 'schemas'))})
