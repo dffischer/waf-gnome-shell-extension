@@ -197,64 +197,52 @@ class gse_producer(Task):
             return super().sig_explicit_deps()
 
     def run(self):
+        # Retrieve and categorize sources.
         gen = self.generator
-        bld = gen.bld
-        gen = bld(features="gse-internal", metadata=self.inputs[0],
-                source=gen.to_nodes(getattr(self, 'source', []))
-                    + bld.node_deps[self.uid()],
-                **{parameter: getattr(self, parameter)
-                    for parameter in self.__dict__.keys()
-                    & set(('uuid', 'schemas'))})
-        gen.post()
-        self.more_tasks = gen.tasks
+        path = gen.path
+        metadata = self.inputs[0]
+        # Installation has to look at their hierarchy from the correct root to
+        # install generated files into the same location as ready available ones.
+        nothing, src, bld, both = partition(categories=4,
+                items=chain((metadata, ), gen.bld.node_deps[self.uid()],
+                    gen.to_nodes(getattr(self, 'source', []))),
+                # The is_src and is_bld predicates are combined like binary flags
+                # to end up with an integral predicate.
+                predicate=lambda source: source.is_src() + 2 * source.is_bld())
 
-@feature("gse-internal")
-@before_method('process_source')
-def process_gse_internal(gen):
-    # Retrieve and categorize sources.
-    path = gen.path
-    metadata = gen.metadata
-    # Installation has to look at their hierarchy from the correct root to
-    # install generated files into the same location as ready available ones.
-    nothing, src, bld, both = partition(categories=4,
-            items=chain((metadata, ), gen.source),
-            # The is_src and is_bld predicates are combined like binary flags
-            # to end up with an integral predicate.
-            predicate=lambda source: source.is_src() + 2 * source.is_bld())
-    gen.source = []  # Suppress further processing.
+        # Check for sources manually added outside the extension tree.
+        bldpath = path.get_bld()
+        nothing = tuple(nothing)
+        if tuple(nothing):
+            raise WafError("files {} neither found below {} nor {}".format(
+                ', '.join(map(str, nothing)), path, bldpath))
+        both = tuple(both)
+        if tuple(both):
+            raise WafError("files {} found both below {} and {}".format(
+                ', '.join(map(str, nothing)), path, bldpath))
 
-    # Check for sources manually added outside the extension tree.
-    bldpath = path.get_bld()
-    nothing = tuple(nothing)
-    if tuple(nothing):
-        raise WafError("files {} neither found below {} nor {}".format(
-            ', '.join(map(str, nothing)), path, bldpath))
-    both = tuple(both)
-    if tuple(both):
-        raise WafError("files {} found both below {} and {}".format(
-            ', '.join(map(str, nothing)), path, bldpath))
+        # Retrieve uuid.
+        metadata = metadata.read_json()
+        uuid = getattr(gen, "uuid", None) or metadata["uuid"]
+        if not uuid:
+            raise WafError("missing uuid in {}".format(self))
 
-    # Retrieve uuid.
-    metadata = metadata.read_json()
-    uuid = getattr(gen, "uuid", None) or metadata["uuid"]
-    if not uuid:
-        raise WafError("missing uuid in {}".format(self))
+        # Install.
+        env = gen.env
+        target = env.EXTDIR.format(uuid)
+        install = partial(gen.add_install_files,
+                install_to=target, relative_trick=True)
+        more_tasks = self.more_tasks = [install(install_from=src),
+                install(install_from=bld, cwd=bldpath)]
 
-    # Install.
-    env = gen.env
-    target = env.EXTDIR.format(uuid)
-    install = partial(gen.add_install_files,
-            install_to=target, relative_trick=True)
-    install(install_from=src)
-    install(install_from=bld, cwd=bldpath)
+        # Collect schemas.
+        schemas = to_list(getattr(gen, 'schemas', []))
+        if "settings-schema" in metadata:
+            schemas += [metadata["settings-schema"] + '.gschema.xml']
 
-    # Collect schemas.
-    schemas = to_list(getattr(gen, 'schemas', []))
-    if "settings-schema" in metadata:
-        schemas += [metadata["settings-schema"] + '.gschema.xml']
-
-    # Pass on to glib2 tool for schema processing.
-    if schemas:
-        gen.meths.append('process_settings')
-        gen.settings_schema_files = schemas
-        env.GSETTINGSSCHEMADIR = env.SCHEMADIR.format(uuid)
+        # Pass on to glib2 tool for schema processing.
+        if schemas:
+            gen = gen.bld(features="glib2", settings_schema_files = schemas)
+            gen.env.GSETTINGSSCHEMADIR = env.SCHEMADIR.format(uuid)
+            gen.post()
+            more_tasks += gen.tasks
