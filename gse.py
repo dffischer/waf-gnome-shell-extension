@@ -202,12 +202,12 @@ class gse_producer(Task):
         path = gen.path
         metadata = self.inputs[0]
         # Installation has to look at their hierarchy from the correct root to
-        # install generated files into the same location as ready available ones.
+        # install generated files into the same location as static ones.
         nothing, src, bld, both = partition(categories=4,
                 items=chain((metadata, ), gen.bld.node_deps[self.uid()],
                     gen.to_nodes(getattr(self, 'source', []))),
-                # The is_src and is_bld predicates are combined like binary flags
-                # to end up with an integral predicate.
+                # The is_src and is_bld predicates are combined like binary
+                # flags to end up with an integral predicate.
                 predicate=lambda source: source.is_src() + 2 * source.is_bld())
 
         # Check for sources manually added outside the extension tree.
