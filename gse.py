@@ -203,7 +203,7 @@ class gse_producer(Task):
         metadata = self.inputs[0]
         # Installation has to look at their hierarchy from the correct root to
         # install generated files into the same location as static ones.
-        nothing, src, bld, both = partition(categories=4,
+        nothing, srcnodes, bldnodes, both = partition(categories=4,
                 items=chain((metadata, ), gen.bld.node_deps[self.uid()],
                     gen.to_nodes(getattr(self, 'source', []))),
                 # The is_src and is_bld predicates are combined like binary
@@ -232,8 +232,8 @@ class gse_producer(Task):
         target = env.EXTDIR.format(uuid)
         install = partial(gen.add_install_files,
                 install_to=target, relative_trick=True)
-        more_tasks = self.more_tasks = [install(install_from=src),
-                install(install_from=bld, cwd=bldpath)]
+        more_tasks = self.more_tasks = [install(install_from=srcnodes),
+                install(install_from=bldnodes, cwd=bldpath)]
 
         # Collect schemas.
         schemas = to_list(getattr(gen, 'schemas', []))
