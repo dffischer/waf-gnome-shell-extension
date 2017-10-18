@@ -199,12 +199,13 @@ class gse_producer(Task):
     def run(self):
         # Retrieve and categorize sources.
         gen = self.generator
+        bld = gen.bld
         path = gen.path
         metadata = self.inputs[0]
         # Installation has to look at their hierarchy from the correct root to
         # install generated files into the same location as static ones.
         nothing, srcnodes, bldnodes, both = partition(categories=4,
-                items=chain((metadata, ), gen.bld.node_deps[self.uid()],
+                items=chain((metadata, ), bld.node_deps[self.uid()],
                     gen.to_nodes(getattr(self, 'source', []))),
                 # The is_src and is_bld predicates are combined like binary
                 # flags to end up with an integral predicate.
@@ -242,7 +243,7 @@ class gse_producer(Task):
 
         # Pass on to glib2 tool for schema processing.
         if schemas:
-            gen = gen.bld(features="glib2", settings_schema_files = schemas)
+            gen = bld(features="glib2", settings_schema_files = schemas)
             gen.env.GSETTINGSSCHEMADIR = env.SCHEMADIR.format(uuid)
             gen.post()
             more_tasks += gen.tasks
