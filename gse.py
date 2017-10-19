@@ -197,44 +197,48 @@ class gse_producer(Task):
             return super().sig_explicit_deps()
 
     def run(self):
-        # Retrieve and categorize sources.
+        more_tasks = self.more_tasks = []
+
         gen = self.generator
         bld = gen.bld
-        path = gen.path
-        metadata = self.inputs[0]
-        # Installation has to look at their hierarchy from the correct root to
-        # install generated files into the same location as static ones.
-        nothing, srcnodes, bldnodes, both = partition(categories=4,
-                items=chain((metadata, ), bld.node_deps[self.uid()],
-                    gen.to_nodes(getattr(self, 'source', []))),
-                # The is_src and is_bld predicates are combined like binary
-                # flags to end up with an integral predicate.
-                predicate=lambda source: source.is_src() + 2 * source.is_bld())
-
-        # Check for sources manually added outside the extension tree.
-        bldpath = path.get_bld()
-        nothing = tuple(nothing)
-        if tuple(nothing):
-            raise WafError("files {} neither found below {} nor {}".format(
-                ', '.join(map(str, nothing)), path, bldpath))
-        both = tuple(both)
-        if tuple(both):
-            raise WafError("files {} found both below {} and {}".format(
-                ', '.join(map(str, nothing)), path, bldpath))
+        env = gen.env
+        metadata_node = self.inputs[0]
+        metadata = metadata_node.read_json()
 
         # Retrieve uuid.
-        metadata = metadata.read_json()
         uuid = getattr(gen, "uuid", None) or metadata["uuid"]
         if not uuid:
             raise WafError("missing uuid in {}".format(self))
 
-        # Install.
-        env = gen.env
-        target = env.EXTDIR.format(uuid)
-        install = partial(gen.add_install_files,
-                install_to=target, relative_trick=True)
-        more_tasks = self.more_tasks = [install(install_from=srcnodes),
-                install(install_from=bldnodes, cwd=bldpath)]
+        if bld.is_install:
+            # Retrieve and categorize sources.
+            path = gen.path
+            # Installation has to look at their hierarchy from the correct root to
+            # install generated files into the same location as static ones.
+            nothing, srcnodes, bldnodes, both = partition(categories=4,
+                    items=chain((metadata_node, ), bld.node_deps[self.uid()],
+                        gen.to_nodes(getattr(self, 'source', []))),
+                    # The is_src and is_bld predicates are combined like binary
+                    # flags to end up with an integral predicate.
+                    predicate=lambda source: source.is_src() + 2 * source.is_bld())
+
+            # Check for sources manually added outside the extension tree.
+            bldpath = path.get_bld()
+            nothing = tuple(nothing)
+            if tuple(nothing):
+                raise WafError("files {} neither found below {} nor {}".format(
+                    ', '.join(map(str, nothing)), path, bldpath))
+            both = tuple(both)
+            if tuple(both):
+                raise WafError("files {} found both below {} and {}".format(
+                    ', '.join(map(str, nothing)), path, bldpath))
+
+            # Install.
+            target = env.EXTDIR.format(uuid)
+            install = partial(gen.add_install_files,
+                    install_to=target, relative_trick=True)
+            more_tasks += [install(install_from=srcnodes),
+                    install(install_from=bldnodes, cwd=bldpath)]
 
         # Collect schemas.
         schemas = to_list(getattr(gen, 'schemas', []))
