@@ -251,3 +251,9 @@ class gse_producer(Task):
             gen.env.GSETTINGSSCHEMADIR = env.SCHEMADIR.format(uuid)
             gen.post()
             more_tasks += gen.tasks
+
+    @staticmethod
+    def keyword():
+        return "Collecting"
+
+gse_producer.__name__ = "GNOME Shell extension"
