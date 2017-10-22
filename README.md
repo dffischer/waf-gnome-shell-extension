@@ -21,3 +21,5 @@ git clone https://github.com/dffischer/waf-gnome-shell-extension
 ./waf-light configure --prefix=/usr \
   build --make-waf --tools='waf-gnome-shell-extension/gse.py'
 ```
+
+To make it available to a system-wide waf installation, the included waf script can be used to place it into the waf library.
