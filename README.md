@@ -22,4 +22,4 @@ git clone https://github.com/dffischer/waf-gnome-shell-extension
   build --make-waf --tools='waf-gnome-shell-extension/gse.py'
 ```
 
-To make it available to a system-wide waf installation, the included waf script can be used to place it into the waf library.
+To make it available to a system-wide waf installation, the included waf script can be used to place it into the waf library. [There is also a package available for Arch Linux.](https://aur.archlinux.org/packages/waf-gnome-shell-extension-git/)
